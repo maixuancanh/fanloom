@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://fanloom-creative-minds.vercel.app">Live application</a> ·
   <a href="https://hellominds.ai/profile/minds/e9a6513e-f36b-1410-8466-00039ce7df11">Fanloom Mind</a> ·
-  <a href="https://github.com/maixuancanh/fanloom/releases/download/creative-minds-submission/fanloom-creative-minds-demo.mp4">Demo video</a>
+  <a href="https://youtu.be/ZxdsesrT1xM">Demo video</a>
 </p>
 
 Fanloom helps creators keep their audience strategy moving without handing control to an opaque automation system. It remembers a creator's positioning, audience, channels, goals, and previous decisions; turns consented engagement evidence into practical growth recommendations; and follows up when a checkpoint becomes due.
