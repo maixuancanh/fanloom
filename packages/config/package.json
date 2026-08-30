@@ -1,0 +1,10 @@
+{
+  "name": "@fanloom/config",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --declaration --outDir dist src/runtime-urls.ts",
+    "typecheck": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --noEmit src/runtime-urls.ts"
+  },
+  "devDependencies": { "typescript": "^5.7.0" }
+}

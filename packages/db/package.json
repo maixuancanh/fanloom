@@ -1,0 +1,20 @@
+{
+  "name": "@fanloom/db",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --declaration --outDir dist src/client.ts",
+    "test": "vitest run",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:deploy": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.14.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.14.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "@fanloom/storage",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --declaration --outDir dist src/artifacts.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.862.0",
+    "@aws-sdk/s3-request-presigner": "^3.862.0"
+  },
+  "devDependencies": {
+    "s3rver": "^3.7.1",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  }
+}

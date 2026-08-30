@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fanloom
+      POSTGRES_USER: fanloom
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - fanloom-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fanloom -d fanloom"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      FANLOOM_DATABASE_URL: postgresql://fanloom:${POSTGRES_PASSWORD}@postgres:5432/fanloom
+      FANLOOM_SESSION_SECRET: ${FANLOOM_SESSION_SECRET:?set FANLOOM_SESSION_SECRET}
+      FANLOOM_LOCAL_DEMO: ${FANLOOM_LOCAL_DEMO:-true}
+      FANLOOM_ALLOWED_ORIGIN: ${FANLOOM_ALLOWED_ORIGIN:-http://127.0.0.1:4174}
+      MINDS_BUILDER_API_KEY: ${MINDS_BUILDER_API_KEY:-}
+      FANLOOM_MIND_ID: ${FANLOOM_MIND_ID:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["sh", "-c", "npx prisma migrate deploy --schema packages/db/prisma/schema.prisma && node dist/apps/api/src/server.js"]
+    ports: ["3001:3001"]
+  worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile.worker
+    environment:
+      NODE_ENV: production
+      FANLOOM_DATABASE_URL: postgresql://fanloom:${POSTGRES_PASSWORD}@postgres:5432/fanloom
+      FANLOOM_SESSION_SECRET: ${FANLOOM_SESSION_SECRET:?set FANLOOM_SESSION_SECRET}
+      MINDS_BUILDER_API_KEY: ${MINDS_BUILDER_API_KEY:-}
+      FANLOOM_MIND_ID: ${FANLOOM_MIND_ID:-}
+    depends_on:
+      api:
+        condition: service_started
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["${FANLOOM_WEB_PORT:-4174}:4173"]
+volumes:
+  fanloom-postgres:

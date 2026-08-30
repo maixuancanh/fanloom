@@ -1,0 +1,15 @@
+{
+  "name": "@fanloom/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --declaration --outDir dist src/main.ts src/evaluate-event.ts src/outbox.ts src/process-advisor.ts src/advisor-followups.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --noEmit src/main.ts src/evaluate-event.ts src/outbox.ts src/process-advisor.ts src/advisor-followups.ts",
+    "start": "node dist/main.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.0"
+  }
+}

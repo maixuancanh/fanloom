@@ -1,0 +1,20 @@
+{
+  "name": "fanloom",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "demo:advance-followup": "node scripts/advance-advisor-followup.mjs",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0",
+    "globals": "^15.11.0",
+    "typescript-eslint": "^8.11.0"
+  }
+}

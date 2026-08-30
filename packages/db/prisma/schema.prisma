@@ -1,0 +1,317 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("FANLOOM_DATABASE_URL")
+}
+
+enum UserRole {
+  creator
+  fan
+  admin
+}
+enum ConsentStatus {
+  active
+  revoked
+}
+enum CampaignStatus {
+  draft
+  active
+  paused
+  completed
+}
+enum ActionStatus {
+  pending
+  approved
+  rejected
+  executed
+  failed
+}
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+}
+enum TipStatus {
+  pending
+  succeeded
+  failed
+  refunded
+}
+enum RewardEntryType {
+  earn
+  spend
+  expire
+}
+enum OutboxStatus {
+  pending
+  processing
+  delivered
+  failed
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @unique
+  role      UserRole
+  tenantId  String   @db.Uuid
+  communityId String @db.Uuid
+  creatorId String?  @db.Uuid
+  createdAt DateTime @default(now())
+  creator   Creator?
+  fan       Fan?
+  auditEvents AuditEvent[]
+  approvals Approval[]
+}
+
+model Creator {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
+  displayName String
+  niche String?
+  audience String?
+  priorityChannels Json @default("[]")
+  goal30Day String?
+  differentiator String?
+  tenantId String @db.Uuid
+  communityId String @db.Uuid
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+  artifacts CampaignArtifact[]
+  tips      Tip[]
+}
+
+model Fan {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
+  handle    String
+  tenantId String @db.Uuid
+  communityId String @db.Uuid
+  creatorId String @db.Uuid
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consents  ConsentGrant[]
+  events    EngagementEvent[]
+  tips      Tip[]
+  rewards   RewardLedger[]
+}
+
+model ConsentGrant {
+  id        String   @id @default(uuid()) @db.Uuid
+  fanId     String   @db.Uuid
+  purpose   String
+  status    ConsentStatus
+  grantedAt DateTime @default(now())
+  revokedAt DateTime?
+  tenantId String @db.Uuid
+  communityId String @db.Uuid
+  creatorId String @db.Uuid
+  fan       Fan @relation(fields: [fanId], references: [id], onDelete: Cascade)
+  @@unique([tenantId, fanId, purpose])
+  @@index([tenantId, communityId, creatorId])
+}
+
+model EngagementEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  fanId          String?  @db.Uuid
+  tenantId       String   @db.Uuid
+  communityId    String   @db.Uuid
+  creatorId      String   @db.Uuid
+  provider       String
+  providerEventId String
+  fingerprint    String   @db.Char(64)
+  idempotencyKey String   @unique
+  eventType      String
+  payload        Json
+  occurredAt     DateTime
+  createdAt      DateTime @default(now())
+  fan            Fan? @relation(fields: [fanId], references: [id], onDelete: SetNull)
+  @@unique([tenantId, provider, providerEventId])
+}
+
+model Campaign {
+  id        String @id @default(uuid()) @db.Uuid
+  creatorId String @db.Uuid
+  name      String
+  status    CampaignStatus @default(draft)
+  budgetLimitMinor BigInt @default(0)
+  spentMinor BigInt @default(0)
+  createdAt DateTime @default(now())
+  creator   Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  actions   CampaignAction[]
+  artifacts CampaignArtifact[]
+}
+
+model CampaignAction {
+  id           String @id @default(uuid()) @db.Uuid
+  campaignId   String @db.Uuid
+  idempotencyKey String @unique
+  actionType   String
+  status       ActionStatus @default(pending)
+  amountMinor  BigInt?
+  currency     String? @db.VarChar(10)
+  maxSpendMinor BigInt?
+  evidenceEventIds Json?
+  createdAt    DateTime @default(now())
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  approvals    Approval[]
+  connectorExecution ConnectorExecution?
+}
+
+model ConnectorExecution {
+  id                  String   @id @default(uuid()) @db.Uuid
+  actionId            String   @unique @db.Uuid
+  idempotencyKey      String   @unique
+  connector           String
+  status              String
+  providerOperationId String?
+  result              Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  action              CampaignAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+}
+
+model CampaignArtifact {
+  id             String @id @default(uuid()) @db.Uuid
+  creatorId      String @db.Uuid
+  campaignId     String? @db.Uuid
+  objectKey      String @unique
+  sha256         String @db.Char(64)
+  mediaType      String
+  byteSize       Int
+  retentionUntil DateTime
+  deletedAt      DateTime?
+  createdAt      DateTime @default(now())
+  creator        Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  campaign       Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+}
+
+model Approval {
+  id         String @id @default(uuid()) @db.Uuid
+  actionId   String @db.Uuid
+  status     ApprovalStatus @default(pending)
+  reviewerId String? @db.Uuid
+  createdAt  DateTime @default(now())
+  decisionHash String?
+  boundedSpendMinor BigInt?
+  decidedAt DateTime?
+  action     CampaignAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  reviewer   User? @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
+}
+
+model Tip {
+  id             String @id @default(uuid()) @db.Uuid
+  fanId          String @db.Uuid
+  creatorId      String @db.Uuid
+  idempotencyKey String @unique
+  amountMinor    BigInt
+  currency       String @db.VarChar(10)
+  provider       String
+  providerOperationId String?
+  status         TipStatus @default(pending)
+  createdAt      DateTime @default(now())
+  fan            Fan @relation(fields: [fanId], references: [id], onDelete: Restrict)
+  creator        Creator @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+}
+
+model RewardLedger {
+  id             String @id @default(uuid()) @db.Uuid
+  fanId          String @db.Uuid
+  idempotencyKey String @unique
+  amountMinor    BigInt
+  currency       String @db.VarChar(10)
+  entryType      RewardEntryType
+  reason         String
+  createdAt      DateTime @default(now())
+  fan            Fan @relation(fields: [fanId], references: [id], onDelete: Cascade)
+}
+
+model AuditEvent {
+  id             String @id @default(uuid()) @db.Uuid
+  actorId        String? @db.Uuid
+  tenantId       String  @db.Uuid
+  communityId    String @db.Uuid
+  action         String
+  idempotencyKey String
+  metadata       Json
+  createdAt      DateTime @default(now())
+  actor          User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  @@unique([tenantId, communityId, action, idempotencyKey])
+}
+
+model OutboxJob {
+  id             String @id @default(uuid()) @db.Uuid
+  idempotencyKey String
+  tenantId       String  @db.Uuid
+  communityId    String @db.Uuid
+  topic          String
+  payload        Json
+  status         OutboxStatus @default(pending)
+  attempts       Int @default(0)
+  claimToken     String?
+  availableAt    DateTime @default(now())
+  lockedAt       DateTime?
+  deliveredAt    DateTime?
+  failedAt       DateTime?
+  lastError      String?
+  createdAt      DateTime @default(now())
+  audits         MindEvaluationAudit[]
+  advisorAudits  MindAdvisorAudit[]
+  @@unique([tenantId, communityId, topic, idempotencyKey])
+}
+
+model MindEvaluationAudit {
+  id             String   @id @default(uuid()) @db.Uuid
+  outboxJobId    String   @db.Uuid
+  tenantId       String   @db.Uuid
+  communityId    String   @db.Uuid
+  requestId      String
+  transcriptRef  String?
+  decision       Json?
+  validation     Json
+  createdAt      DateTime @default(now())
+  outboxJob      OutboxJob @relation(fields: [outboxJobId], references: [id], onDelete: Restrict)
+  @@unique([outboxJobId])
+  @@unique([requestId])
+  @@index([tenantId, communityId, createdAt])
+}
+
+model MindAdvisorAudit {
+  id             String   @id @default(uuid()) @db.Uuid
+  outboxJobId    String   @db.Uuid
+  creatorId      String   @db.Uuid
+  tenantId       String   @db.Uuid
+  communityId    String   @db.Uuid
+  mindId         String
+  conversationAlias String @default("")
+  trigger        String @default("manual")
+  parentAuditId  String? @db.Uuid
+  creatorProfileSnapshot Json @default("{}")
+  requestId      String   @unique
+  transcriptRef  String?
+  recommendation Json?
+  validation     Json
+  followUpAt     DateTime?
+  createdAt      DateTime @default(now())
+  outboxJob      OutboxJob @relation(fields: [outboxJobId], references: [id], onDelete: Restrict)
+  @@unique([outboxJobId])
+  @@index([creatorId, createdAt])
+  @@index([creatorId, trigger, createdAt])
+  @@index([tenantId, communityId, createdAt])
+}
+
+model IdempotencyRecord {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  actorId   String   @db.Uuid
+  communityId String @db.Uuid
+  callerKey String
+  operation String
+  resource  String
+  createdAt DateTime @default(now())
+  @@unique([tenantId, communityId, actorId, callerKey, operation, resource])
+  @@index([tenantId, communityId, callerKey])
+}
